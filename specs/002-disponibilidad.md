@@ -22,7 +22,7 @@ Consulta horarios disponibles para un servicio y, cuando corresponda, un profesi
 
 ### Administrador del tenant
 
-Configura servicios, profesionales, horarios y bloqueos que afectan la disponibilidad.
+Configura servicios, profesionales, horarios, bloqueos y reglas de reserva que afectan la disponibilidad.
 
 ### Booking Engine
 
@@ -50,8 +50,6 @@ Cada opción debe contener, como mínimo:
 - hora de finalización;
 - identificador del profesional cuando corresponda.
 
-La representación exacta del contrato HTTP será definida al implementar el endpoint.
-
 ## 6. Requisitos funcionales
 
 ### RF-001 — Consultar disponibilidad
@@ -62,8 +60,6 @@ El sistema debe permitir consultar la disponibilidad para un servicio y una fech
 
 La duración del servicio debe determinar la duración ocupada por cada turno.
 
-Un servicio de 30 minutos no puede generar un intervalo de 15 minutos.
-
 ### RF-003 — Horario laboral
 
 Solo deben generarse intervalos que estén dentro del horario laboral aplicable.
@@ -73,8 +69,6 @@ Solo deben generarse intervalos que estén dentro del horario laboral aplicable.
 Cuando un servicio requiera un profesional específico, la disponibilidad debe considerar sus horarios y bloqueos.
 
 Cuando el cliente pueda elegir entre varios profesionales habilitados, el sistema debe considerar únicamente los profesionales que puedan realizar el servicio.
-
-La regla exacta de asignación automática de profesional se definirá en una especificación posterior.
 
 ### RF-005 — Turnos existentes
 
@@ -96,19 +90,21 @@ No debe ofrecerse disponibilidad para:
 
 Los cálculos deben realizarse respetando la zona horaria configurada para el tenant.
 
-No se debe interpretar una hora local del negocio como UTC sin realizar la conversión correspondiente.
-
 ### RF-009 — Intervalos que cruzan límites
 
 Un intervalo de servicio solo puede considerarse disponible si toda su duración cabe dentro de un período permitido.
 
-Ejemplo:
+### RF-010 — Anticipación mínima
 
-Horario laboral: 09:00–17:00  
-Servicio: 60 minutos  
-Inicio: 16:30
+No deben ofrecerse horarios cuyo inicio esté a menos tiempo de anticipación que el configurado por el tenant.
 
-El horario 16:30 no es válido porque el servicio finalizaría a las 17:30.
+Un turno del mismo día puede aparecer si todavía cumple la anticipación mínima.
+
+### RF-011 — Límite diario
+
+Si el tenant ya alcanzó su cantidad máxima de turnos para una fecha, no debe ofrecerse disponibilidad para nuevos turnos en esa fecha.
+
+La comprobación debe utilizar los estados de turno que ocupan capacidad según las reglas del dominio.
 
 ## 7. Reglas de negocio
 
@@ -138,44 +134,31 @@ Las fechas y horas deben interpretarse según la zona horaria del tenant.
 
 ### RN-007 — Tiempo pasado
 
-Por defecto, no deben ofrecerse horarios cuya hora de inicio ya haya pasado respecto del momento actual en la zona horaria del tenant.
+No deben ofrecerse horarios cuya hora de inicio ya haya pasado respecto del momento actual en la zona horaria del tenant.
 
-La política exacta sobre reservas con poca anticipación queda pendiente de una especificación de reglas de reserva.
+### RN-008 — Anticipación mínima
 
-### RN-008 — Granularidad
+No deben ofrecerse horarios que no cumplan la anticipación mínima configurada por el tenant.
+
+La regla se evalúa comparando el momento actual con el inicio del turno en la zona horaria correspondiente.
+
+### RN-009 — Límite diario
+
+Cuando la cantidad de turnos que ocupan capacidad para una fecha sea igual al límite diario configurado, no deben generarse nuevas opciones para esa fecha.
+
+La disponibilidad no reemplaza la validación transaccional durante la creación del turno.
+
+### RN-010 — Granularidad
 
 La generación de intervalos debe utilizar una granularidad definida por la configuración del sistema.
 
-Para el MVP, la granularidad inicial será de 15 minutos, salvo que una especificación posterior establezca otra regla.
+Para el MVP, la granularidad inicial será de 15 minutos.
 
-### RN-009 — Pertenencia al tenant
+### RN-011 — Pertenencia al tenant
 
 Todos los servicios, profesionales, horarios, bloqueos y turnos utilizados para calcular disponibilidad deben pertenecer al tenant correspondiente.
 
-## 8. Ejemplo conceptual
-
-Configuración:
-
-- horario laboral: 09:00–17:00;
-- servicio: 60 minutos;
-- granularidad: 15 minutos;
-- turno existente: 11:00–12:00.
-
-El Booking Engine puede producir:
-
-- 09:00–10:00;
-- 09:15–10:15;
-- 09:30–10:30;
-- 09:45–10:45;
-- 10:00–11:00;
-- 12:00–13:00;
-- etc.
-
-No debe producir intervalos que se superpongan con 11:00–12:00 ni aquellos que terminen después de las 17:00.
-
-Este ejemplo es conceptual; la política definitiva sobre solapamientos y granularidad será parte del contrato de disponibilidad.
-
-## 9. Concurrencia
+## 8. Concurrencia
 
 La consulta de disponibilidad no reserva el horario.
 
@@ -187,15 +170,14 @@ Por lo tanto:
 2. selecciona un horario;
 3. envía la solicitud de creación;
 4. el backend vuelve a ejecutar las validaciones necesarias;
-5. la base de datos debe proteger la operación frente a concurrencia.
+5. la base de datos debe proteger la operación frente a concurrencia;
+6. el límite diario también debe validarse de forma segura durante la creación.
 
-El mecanismo concreto de protección se definirá en la especificación de creación de turnos.
-
-## 10. API
+## 9. API
 
 El contrato conceptual inicial es:
 
-`GET /api/v1/availability`
+GET /api/v1/availability
 
 Los parámetros definitivos deberán permitir identificar:
 
@@ -203,11 +185,7 @@ Los parámetros definitivos deberán permitir identificar:
 - fecha;
 - profesional cuando corresponda.
 
-La respuesta debe utilizar el formato de errores establecido en `API-CONTRACT.md`.
-
-No debe incluir información privada de otros clientes ni datos innecesarios para reservar.
-
-## 11. Rendimiento
+## 10. Rendimiento
 
 La consulta de disponibilidad debe diseñarse para poder utilizarse tanto desde:
 
@@ -217,23 +195,13 @@ La consulta de disponibilidad debe diseñarse para poder utilizarse tanto desde:
 
 La implementación inicial debe priorizar corrección y claridad.
 
-Se podrán introducir índices, caché u otras optimizaciones cuando existan mediciones o necesidades concretas.
-
-La caché no debe convertirse en la fuente de verdad de la disponibilidad.
-
-## 12. Seguridad
+## 11. Seguridad
 
 El endpoint público de disponibilidad debe exponer únicamente información necesaria para realizar una reserva.
 
-Debe evitarse revelar:
+Debe evitarse revelar datos personales de clientes, detalles internos de otros turnos e información de configuración privada.
 
-- datos personales de clientes;
-- detalles internos de otros turnos;
-- información de configuración privada.
-
-Las operaciones administrativas relacionadas con horarios y bloqueos requieren autenticación y autorización.
-
-## 13. Casos límite
+## 12. Casos límite
 
 Deben contemplarse al menos:
 
@@ -255,9 +223,12 @@ Deben contemplarse al menos:
 - múltiples profesionales disponibles;
 - ningún profesional disponible;
 - cambio de zona horaria;
-- horario de verano o cambios de offset cuando sean relevantes para la zona configurada.
+- límite diario alcanzado;
+- límite diario alcanzado mientras existen horarios laborales libres;
+- turno del mismo día dentro de la anticipación mínima;
+- turno del mismo día fuera de la anticipación mínima.
 
-## 14. Criterios de aceptación
+## 13. Criterios de aceptación
 
 La especificación se considera implementada cuando:
 
@@ -271,12 +242,12 @@ La especificación se considera implementada cuando:
 8. no se ofrecen intervalos que excedan el horario laboral;
 9. se respeta la granularidad definida;
 10. se verifica correctamente la pertenencia al tenant;
-11. existen pruebas unitarias para las reglas principales;
-12. existen pruebas para casos de solapamiento;
-13. la consulta no se utiliza como garantía de reserva;
-14. la creación posterior vuelve a validar la disponibilidad.
+11. se respeta la anticipación mínima;
+12. no se ofrece disponibilidad cuando se alcanzó el límite diario;
+13. existen pruebas unitarias para las reglas principales;
+14. la creación posterior vuelve a validar disponibilidad y límite diario.
 
-## 15. Fuera de alcance
+## 14. Fuera de alcance
 
 Esta especificación no define todavía:
 
@@ -286,20 +257,19 @@ Esta especificación no define todavía:
 - pagos;
 - recordatorios;
 - selección automática avanzada de profesionales;
-- reglas de anticipación mínima o máxima;
 - límites de reservas por cliente;
 - autenticación del cliente;
 - caché de disponibilidad;
 - optimizaciones de rendimiento avanzadas.
 
-## 16. Dependencias
+## 15. Dependencias
 
 Esta especificación depende de:
 
-- `001-configuracion-tenant.md`;
-- `SDD.md`;
-- `ARCHITECTURE.md`;
-- `API-CONTRACT.md`;
-- `DECISIONS.md`.
+- 001-configuracion-tenant.md;
+- SDD.md;
+- ARCHITECTURE.md;
+- API-CONTRACT.md;
+- DECISIONS.md.
 
 La especificación de creación de turnos dependerá de esta definición.
