@@ -96,7 +96,7 @@ Un intervalo de servicio solo puede considerarse disponible si toda su duración
 
 ### RF-010 — Anticipación mínima
 
-No deben ofrecerse horarios cuyo inicio esté a menos tiempo de anticipación que el configurado por el tenant.
+No deben ofrecerse horarios cuyo inicio esté a menos horas de anticipación que las configuradas por el profesional para el tenant.
 
 Un turno del mismo día puede aparecer si todavía cumple la anticipación mínima.
 
