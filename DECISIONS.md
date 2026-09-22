@@ -274,3 +274,13 @@ La primera notificación obligatoria del flujo público será la confirmación d
 
 Las notificaciones de cancelación, reprogramación y recordatorios podrán utilizar los eventos correspondientes, pero su implementación concreta queda fuera de esta etapa documental inicial.
 
+
+## 29. Configuración de reglas por el profesional
+
+Después de registrarse en la plataforma, el profesional o administrador responsable deberá completar la configuración de su negocio antes de publicarlo.
+
+La cantidad máxima de turnos diarios y la anticipación mínima para solicitar turnos serán reglas configurables por ese profesional.
+
+La anticipación mínima se expresará en horas.
+
+Estas reglas no serán decididas por el cliente ni por el Booking Engine; el Booking Engine únicamente las aplicará y validará.
