@@ -205,3 +205,72 @@ No se incorporarán tecnologías, abstracciones o componentes complejos solament
 El objetivo actual es establecer correctamente la base arquitectónica y documental antes de construir el backend y frontend.
 
 Las decisiones futuras deberán registrarse en este documento cuando tengan impacto arquitectónico significativo.
+
+## 21. Autenticación únicamente para administración
+
+En el MVP, únicamente el administrador o propietario del negocio requerirá autenticación y autorización.
+
+El cliente podrá reservar un turno sin crear una cuenta.
+
+La identidad administrativa estará asociada a un tenant y el backend deberá garantizar el aislamiento entre tenants.
+
+El mecanismo concreto de autenticación queda para la implementación y su especificación correspondiente.
+
+## 22. Datos mínimos del cliente para reservar
+
+El cliente deberá proporcionar:
+
+- nombre y apellido, obligatorio;
+- teléfono, obligatorio;
+- información adicional, opcional, con un máximo de 300 caracteres.
+
+No se creará una cuenta de cliente como requisito para reservar.
+
+## 23. Confirmación de turno por WhatsApp
+
+El teléfono proporcionado por el cliente se utilizará para enviar la confirmación del turno mediante WhatsApp.
+
+La confirmación del turno no dependerá de que WhatsApp o n8n hayan procesado correctamente la notificación.
+
+El turno queda confirmado cuando la operación de reserva se persiste correctamente y cumple las reglas del Booking Engine.
+
+## 24. Eventos y automatizaciones desacoplados del Booking Engine
+
+Las automatizaciones externas se iniciarán mediante eventos de dominio posteriores a operaciones confirmadas.
+
+Los eventos iniciales son:
+
+- `appointment.created`;
+- `appointment.cancelled`;
+- `appointment.rescheduled`.
+
+La implementación deberá contemplar confiabilidad, reintentos e idempotencia cuando sean necesarios.
+
+n8n no será una dependencia síncrona de las operaciones críticas de reserva.
+
+## 25. Publicación del negocio
+
+Un negocio no estará disponible públicamente para nuevas reservas hasta que haya sido publicado explícitamente por su administrador y cumpla la configuración mínima requerida.
+
+La publicación y despublicación son operaciones administrativas.
+
+Despublicar un negocio impide nuevas reservas públicas, pero no elimina el historial existente.
+
+## 26. Acceso público sin exposición de datos administrativos
+
+La página pública y el widget utilizarán el mismo backend y Booking Engine que las operaciones administrativas, pero mediante recursos públicos limitados.
+
+Nunca deberán exponerse credenciales, secretos, información de otros clientes ni datos administrativos innecesarios.
+
+## 27. Operaciones posteriores del cliente
+
+Las operaciones públicas de cancelación o reprogramación por parte del cliente no requerirán una cuenta de cliente en el MVP.
+
+El mecanismo seguro concreto para permitir esas operaciones queda pendiente de una decisión y especificación posterior.
+
+## 28. Alcance actual de notificaciones
+
+La primera notificación obligatoria del flujo público será la confirmación del turno mediante WhatsApp.
+
+Las notificaciones de cancelación, reprogramación y recordatorios podrán utilizar los eventos correspondientes, pero su implementación concreta queda fuera de esta etapa documental inicial.
+
