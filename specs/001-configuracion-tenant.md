@@ -154,13 +154,13 @@ No se debe permitir un turno cuyo inicio esté a menos tiempo de anticipación q
 
 La regla se calcula utilizando la zona horaria del tenant.
 
-La anticipación mínima no implica prohibir todos los turnos del mismo día: si todavía se cumple el tiempo mínimo requerido, el turno del mismo día puede reservarse.
+La anticipación mínima se expresa en horas y no implica prohibir todos los turnos del mismo día: si todavía se cumple el tiempo mínimo requerido, el turno del mismo día puede reservarse.
 
 ### RN-009 — Valores de reglas válidos
 
 La cantidad máxima diaria no puede ser negativa.
 
-La anticipación mínima no puede ser negativa.
+La anticipación mínima en horas no puede ser negativa.
 
 ## 7. Validaciones
 
@@ -233,7 +233,7 @@ Deben contemplarse al menos:
 - límite diario alcanzado;
 - dos solicitudes concurrentes que podrían superar el límite diario;
 - anticipación mínima igual a cero;
-- anticipación mínima negativa;
+- anticipación mínima negativa;\n- anticipación mínima expresada en horas;
 - turno del mismo día dentro del margen permitido;
 - turno del mismo día fuera del margen permitido;
 - solicitud que cruza el límite de anticipación por pocos segundos;
