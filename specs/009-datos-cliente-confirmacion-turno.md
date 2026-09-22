@@ -2,7 +2,7 @@
 
 ## 1. Objetivo
 
-Definir los datos mínimos que debe proporcionar un cliente para crear un turno y cómo se confirma la reserva.
+Definir los datos que debe proporcionar un cliente para crear un turno y cómo se confirma la reserva.
 
 El cliente no requiere una cuenta autenticada en el MVP.
 
@@ -10,25 +10,46 @@ El cliente no requiere una cuenta autenticada en el MVP.
 
 El cliente accede mediante la página pública o el widget.
 
-Después de seleccionar servicio, fecha, horario y profesional cuando corresponda, debe proporcionar los datos necesarios para identificar el turno y permitir su gestión o comunicación.
+Después de seleccionar servicio, fecha, horario y profesional cuando corresponda, debe proporcionar sus datos y, opcionalmente, información adicional antes de confirmar la reserva.
 
 El backend debe validar los datos y confirmar el turno únicamente después de verificar nuevamente la disponibilidad.
 
 ## 3. Datos del cliente
 
-El MVP debe solicitar únicamente los datos necesarios para:
+El formulario de reserva del MVP tendrá exactamente estos campos:
 
-- identificar al cliente dentro del turno
-- permitir la comunicación relacionada con el turno
-- facilitar futuras operaciones sobre el turno si se define un mecanismo de gestión
+### 3.1 Nombre y apellido
 
-Datos mínimos propuestos:
+Campo obligatorio.
 
-- nombre
-- teléfono o medio de contacto principal
-- correo electrónico, si el negocio lo requiere
+Debe permitir identificar al cliente asociado al turno.
 
-La obligatoriedad exacta de teléfono y correo deberá definirse mediante configuración o decisión posterior. No se debe exigir información innecesaria.
+### 3.2 Teléfono
+
+Campo obligatorio.
+
+El número de teléfono será además el medio utilizado para enviar la confirmación del turno mediante WhatsApp.
+
+El backend debe validar que el valor tenga un formato aceptable antes de crear el turno.
+
+### 3.3 Información adicional
+
+Campo opcional de tipo textarea.
+
+El cliente puede utilizarlo para enviar:
+
+- sugerencias
+- pedidos
+- información adicional
+- aclaraciones relacionadas con el turno
+
+Límite máximo:
+
+**300 caracteres.**
+
+El backend debe validar el límite de 300 caracteres independientemente de la validación realizada por el frontend.
+
+No debe utilizarse este campo como mecanismo de autenticación.
 
 ## 4. Cliente sin cuenta
 
@@ -60,7 +81,10 @@ Consultar disponibilidad
 Seleccionar horario
        |
        v
-Ingresar datos del cliente
+Ingresar:
+  - Nombre y apellido
+  - Teléfono
+  - Información adicional (opcional, máximo 300)
        |
        v
 Solicitar reserva
@@ -80,7 +104,15 @@ Persistir turno
        |
        v
 Confirmar reserva
+       |
+       v
+Generar evento appointment.created
+       |
+       v
+Enviar confirmación por WhatsApp
 ~~~
+
+La creación del turno no debe depender de que WhatsApp haya enviado correctamente el mensaje.
 
 ## 6. Confirmación
 
@@ -101,7 +133,41 @@ Como mínimo:
 
 No debe exponerse un identificador interno si puede utilizarse un identificador público separado.
 
-## 7. Estado de la reserva
+## 7. Confirmación mediante WhatsApp
+
+La confirmación del turno será enviada al número de teléfono proporcionado por el cliente mediante WhatsApp.
+
+El envío se realizará después de que el turno haya sido creado correctamente.
+
+Conceptualmente:
+
+~~~text
+Turno creado
+    |
+    v
+appointment.created
+    |
+    v
+Automatización
+    |
+    v
+WhatsApp
+    |
+    v
+Cliente
+~~~
+
+El proveedor concreto de WhatsApp y su implementación quedan fuera de esta especificación.
+
+Si el envío falla:
+
+- el turno no debe cancelarse automáticamente
+- el turno debe continuar confirmado
+- el fallo debe poder registrarse para su posterior tratamiento
+
+n8n puede encargarse de la automatización, pero no debe ser necesario para confirmar la reserva.
+
+## 8. Estado de la reserva
 
 El turno creado debe tener un estado que permita distinguir una reserva confirmada de otros estados futuros.
 
@@ -113,7 +179,7 @@ confirmed
 
 Los estados adicionales deberán definirse según las necesidades del dominio.
 
-## 8. Respuesta ante conflicto
+## 9. Respuesta ante conflicto
 
 Si el horario deja de estar disponible antes de confirmar:
 
@@ -140,7 +206,7 @@ HTTP:
 409 Conflict
 ~~~
 
-## 9. Idempotencia
+## 10. Idempotencia
 
 La creación de un turno debe contemplar solicitudes repetidas.
 
@@ -155,7 +221,7 @@ La implementación deberá utilizar un mecanismo de idempotencia apropiado.
 
 Una misma operación de reserva no debe crear múltiples turnos por una repetición accidental de la solicitud.
 
-## 10. Privacidad
+## 11. Privacidad
 
 Los datos del cliente deben tratarse como información privada.
 
@@ -165,46 +231,22 @@ Una respuesta pública de disponibilidad nunca debe revelar:
 
 - nombres de clientes
 - teléfonos
-- correos
-- motivos o notas privadas
+- información adicional
 - información de otros turnos que permita identificar personas
 
-## 11. Confirmación por canales externos
+## 12. Evento de creación y automatización
 
-La creación del turno debe ser independiente de cualquier sistema externo de notificaciones.
-
-Por lo tanto:
-
-~~~text
-Crear turno
-    |
-    +--> Persistir turno
-    |
-    +--> Evento appointment.created
-               |
-               v
-          Automatización
-               |
-               +--> Email
-               +--> WhatsApp
-               +--> otros canales
-~~~
-
-Si el sistema de notificaciones está temporalmente caído, el turno debe seguir existiendo y permanecer confirmado.
-
-n8n no debe ser necesario para confirmar la reserva.
-
-## 12. Evento de creación
-
-Una reserva confirmada debe poder generar el evento:
+Una reserva confirmada debe generar el evento:
 
 ~~~text
 appointment.created
 ~~~
 
-El mecanismo concreto de publicación y procesamiento del evento se definirá durante la implementación de eventos/automatizaciones.
+El evento podrá ser procesado por el sistema de automatización para enviar la confirmación por WhatsApp.
 
-El evento no debe ser utilizado como condición para decidir si el turno fue creado.
+El evento no debe utilizarse como condición para decidir si el turno fue creado.
+
+Si n8n, WhatsApp o el proveedor de mensajería están temporalmente caídos, el turno debe seguir existiendo y permanecer confirmado.
 
 ## 13. Gestión posterior del turno
 
@@ -221,17 +263,11 @@ Antes de exponer esas operaciones públicamente deberá definirse un mecanismo s
 
 ## 14. Datos sensibles y notas
 
-No se deben agregar campos libres o información sensible por defecto.
+El campo de información adicional está limitado a 300 caracteres y debe utilizarse únicamente para información relacionada con el turno.
 
-Si en el futuro un negocio necesita notas adicionales, deberán definirse:
+El backend debe validar longitud y formato.
 
-- finalidad
-- visibilidad
-- almacenamiento
-- acceso
-- retención
-
-mediante una especificación específica.
+No se deben agregar campos adicionales al formulario del cliente sin modificar esta especificación o crear una nueva decisión documentada.
 
 ## 15. Criterios de aceptación
 
@@ -241,48 +277,67 @@ Un cliente puede solicitar un turno sin crear una cuenta.
 
 ### CA-02
 
-El backend valida los datos requeridos antes de crear el turno.
+El formulario exige nombre y apellido.
 
 ### CA-03
 
-El backend vuelve a validar disponibilidad antes de confirmar.
+El formulario exige teléfono.
 
 ### CA-04
 
-Un conflicto de disponibilidad devuelve HTTP 409 y no crea un turno.
+El formulario permite información adicional opcional mediante un textarea.
 
 ### CA-05
 
-Una solicitud repetida no crea accidentalmente múltiples turnos cuando corresponde a la misma operación.
+La información adicional no puede superar los 300 caracteres.
 
 ### CA-06
 
-Una reserva solo se considera confirmada después de persistirse correctamente.
+El backend valida todos los campos obligatorios y el límite de 300 caracteres.
 
 ### CA-07
 
-La respuesta de confirmación contiene la información necesaria para reconocer el turno.
+El backend vuelve a validar disponibilidad antes de confirmar.
 
 ### CA-08
 
-La API pública no expone datos privados de otros clientes.
+Un conflicto de disponibilidad devuelve HTTP 409 y no crea un turno.
 
 ### CA-09
 
-La caída de n8n o de un proveedor de notificaciones no impide crear y confirmar el turno.
+Una solicitud repetida no crea accidentalmente múltiples turnos cuando corresponde a la misma operación.
 
 ### CA-10
 
-Una reserva confirmada puede generar el evento `appointment.created` para procesos posteriores.
+Una reserva solo se considera confirmada después de persistirse correctamente.
+
+### CA-11
+
+La confirmación del turno se envía al teléfono proporcionado mediante WhatsApp después de crear la reserva.
+
+### CA-12
+
+Un fallo de WhatsApp o del sistema de automatización no cancela ni impide confirmar el turno.
+
+### CA-13
+
+La API pública no expone datos privados de otros clientes.
+
+### CA-14
+
+Una reserva confirmada genera el evento `appointment.created`.
 
 ## 16. Casos límite
 
 Deben contemplarse como mínimo:
 
-- nombre vacío o inválido
-- teléfono inválido cuando sea obligatorio
-- correo inválido cuando sea obligatorio
-- datos excesivamente largos
+- nombre y apellido vacío
+- teléfono vacío
+- teléfono inválido
+- información adicional vacía
+- información adicional de exactamente 300 caracteres
+- información adicional de más de 300 caracteres
+- datos excesivamente largos en campos obligatorios
 - horario que deja de estar disponible durante la reserva
 - doble envío del formulario
 - reintento HTTP
@@ -290,14 +345,17 @@ Deben contemplarse como mínimo:
 - tenant despublicado durante el proceso
 - servicio desactivado durante el proceso
 - profesional desactivado durante el proceso
-- fallo del sistema de notificaciones después de crear el turno
+- fallo de WhatsApp después de crear el turno
 
 ## 17. Pruebas
 
 La implementación deberá incluir pruebas para:
 
 - creación pública válida
-- validación de datos
+- validación de nombre y apellido
+- validación de teléfono
+- validación del campo opcional
+- límite de 300 caracteres
 - cliente sin cuenta
 - conflicto de disponibilidad
 - concurrencia
@@ -305,7 +363,8 @@ La implementación deberá incluir pruebas para:
 - respuesta de confirmación
 - privacidad de datos
 - generación de `appointment.created`
-- independencia respecto de n8n
+- envío de confirmación mediante el flujo de WhatsApp
+- independencia respecto de WhatsApp/n8n para confirmar la reserva
 - comportamiento ante errores de notificación
 
 ## 18. Dependencias
@@ -333,6 +392,6 @@ No se define aquí:
 - historial de clientes
 - CRM
 - campañas de marketing
-- implementación concreta de WhatsApp o email
+- proveedor concreto de WhatsApp
 - implementación concreta de n8n
 - política legal de privacidad o retención de datos
