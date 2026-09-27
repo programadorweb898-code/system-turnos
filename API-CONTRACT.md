@@ -456,3 +456,63 @@ Una creación exitosa devuelve `201 Created`.
 Datos inválidos deben devolver `400 Bad Request`.
 
 Si el cliente envía `tenantId`, ese valor debe ignorarse y nunca utilizarse para seleccionar el tenant de autorización.
+
+## 23. Asignación de servicios a profesionales
+
+Un servicio puede ser realizado por uno o varios profesionales y un profesional puede estar habilitado para uno o varios servicios.
+
+Las relaciones se administran mediante:
+
+GET /api/v1/admin/configuration/professionals/:professionalId/services
+PUT /api/v1/admin/configuration/professionals/:professionalId/services
+
+El backend obtiene el tenant desde el contexto autenticado. Un tenantId enviado por el cliente nunca puede utilizarse para seleccionar otro tenant.
+
+### GET /api/v1/admin/configuration/professionals/:professionalId/services
+
+Devuelve los servicios asignados al profesional indicado, siempre que el profesional pertenezca al tenant autenticado.
+
+### PUT /api/v1/admin/configuration/professionals/:professionalId/services
+
+Reemplaza las asignaciones del profesional.
+
+Request:
+
+{
+  "serviceIds": ["service-uuid-1", "service-uuid-2"]
+}
+
+Todos los servicios deben pertenecer al tenant autenticado. Las asignaciones duplicadas no están permitidas.
+
+### Selección de profesional en disponibilidad
+
+Cuando un servicio tiene un único profesional activo asignado, ese profesional queda determinado automáticamente y no existe una selección alternativa modificable.
+
+Cuando un servicio tiene dos o más profesionales activos asignados, el cliente puede elegir:
+
+- Cualquier profesional, seleccionado por defecto;
+- un profesional específico.
+
+La consulta de disponibilidad debe adaptarse a esa selección.
+
+GET /api/v1/availability?serviceId=<id>&date=YYYY-MM-DD
+
+sin professionalId representa Cualquier profesional.
+
+GET /api/v1/availability?serviceId=<id>&professionalId=<id>&date=YYYY-MM-DD
+
+con professionalId calcula disponibilidad únicamente para ese profesional.
+
+En el caso Cualquier profesional, un horario es disponible si al menos uno de los profesionales activos habilitados para el servicio puede atender el intervalo completo.
+
+Cambiar el servicio, la fecha o el profesional seleccionado requiere recalcular la disponibilidad. El frontend no debe reutilizar horarios obtenidos para un contexto diferente.
+
+### Creación de reserva
+
+En POST /api/v1/appointments, professionalId es opcional cuando existen varios profesionales habilitados para el servicio.
+
+Si se omite, el backend selecciona de forma transaccional un profesional elegible y la reserva confirmada queda asociada a ese profesional.
+
+Si se informa, el backend debe comprobar que el profesional pertenece al tenant, está activo, está habilitado para el servicio y puede atender el intervalo solicitado.
+
+Si no existe ningún profesional elegible al momento de confirmar una reserva con Cualquier profesional, la operación debe responder 409 Conflict.
