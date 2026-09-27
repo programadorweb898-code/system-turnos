@@ -274,147 +274,55 @@ La respuesta incluye únicamente la configuración necesaria para la administrac
 
 Una solicitud sin autenticación debe recibir `401 Unauthorized`.
 
-## 20. Recursos públicos
+## 20. Configuración administrativa de servicios
 
-La página pública y el widget necesitarán acceder a información pública del tenant.
+Los servicios del tenant autenticado se administran mediante:
 
-Ejemplos:
-
-- Nombre del negocio.
-- Servicios activos.
-- Profesionales públicos.
-- Horarios disponibles.
-- Configuración visual pública.
-
-La API debe exponer únicamente la información necesaria.
-
-Nunca debe devolver información administrativa o sensible a clientes públicos.
-
-## 20. Idempotencia
-
-Las operaciones críticas de creación de reservas deben considerar el riesgo de solicitudes duplicadas.
-
-La estrategia concreta de idempotencia será definida durante la especificación de creación de reservas.
-
-El objetivo es evitar que reintentos de red o solicitudes duplicadas generen reservas duplicadas.
-
-## 21. Paginación
-
-Los endpoints que puedan devolver grandes cantidades de recursos deberán definir una estrategia de paginación.
-
-No se debe devolver una cantidad ilimitada de registros.
-
-La estrategia concreta de paginación será establecida cuando se definan los endpoints administrativos correspondientes.
-
-## 22. Versionado
-
-La API comenzará utilizando:
-
-`/api/v1`
-
-Los cambios incompatibles deberán utilizar una estrategia de versionado o migración explícita.
-
-No se deben introducir cambios incompatibles silenciosamente.
-
-## 23. Compatibilidad frontend/backend
-
-Antes de modificar un contrato utilizado por el frontend:
-
-1. Identificar consumidores.
-2. Actualizar la documentación.
-3. Actualizar la especificación correspondiente.
-4. Implementar el cambio.
-5. Actualizar frontend y backend.
-6. Ejecutar pruebas de integración.
-
-## 24. Eventos
-
-Los eventos internos relacionados con reservas utilizarán nombres consistentes.
-
-Eventos iniciales previstos:
-
-```
-appointment.created
-appointment.updated
-appointment.cancelled
+```http
+GET /api/v1/admin/configuration/services
+POST /api/v1/admin/configuration/services
 ```
 
-Estos eventos no constituyen automáticamente endpoints HTTP públicos.
+Ambas rutas requieren autenticación administrativa.
 
-Su implementación y transporte se definirá según la arquitectura y las especificaciones.
+El backend obtiene el `tenant_id` exclusivamente desde el contexto autenticado. El cliente no puede seleccionar otro tenant mediante el body, query string o parámetros de la ruta.
 
-## 25. Seguridad de la API
+### GET /api/v1/admin/configuration/services
 
-La API debe contemplar:
+Devuelve los servicios pertenecientes al tenant autenticado.
 
-- HTTPS en producción.
-- Validación de entrada.
-- Autenticación.
-- Autorización.
-- CORS configurado explícitamente.
-- Rate limiting cuando corresponda.
-- Protección contra inyección.
-- No exposición de secretos.
-- No exposición de información sensible en errores.
-- Aislamiento entre tenants.
+Cada servicio incluye:
 
-## 26. Reglas para los agentes
+- `id`
+- `name`
+- `description`
+- `duration`
+- `status`
 
-### Backend Agent
+Una solicitud sin autenticación debe recibir `401 Unauthorized`.
 
-Debe:
+### POST /api/v1/admin/configuration/services
 
-- Implementar exactamente los contratos documentados.
-- Actualizar el contrato cuando una especificación lo requiera.
-- Mantener consistencia en errores.
-- Validar las reglas en backend.
+Crea un servicio para el tenant autenticado.
 
-### Frontend Agent
+Request:
 
-Debe:
-
-- Consumir únicamente contratos existentes.
-- No inventar endpoints.
-- No asumir estructuras de respuesta no documentadas.
-- Manejar códigos de error.
-- Adaptarse a cambios coordinados.
-
-### Orchestrator Agent
-
-Debe:
-
-- Resolver inconsistencias entre agentes.
-- Mantener actualizado este documento.
-- Coordinar cambios incompatibles.
-- Verificar que backend y frontend trabajen con el mismo contrato.
-
-## 27. Contratos detallados
-
-Este documento define reglas generales.
-
-Los contratos detallados de cada funcionalidad deben establecerse en las especificaciones correspondientes.
-
-Ejemplos futuros:
-
-```
-specs/
-├── booking/
-│   ├── availability.md
-│   ├── create-appointment.md
-│   ├── cancel-appointment.md
-│   └── reschedule-appointment.md
-├── tenants/
-│   └── tenant-creation.md
-└── widget/
-    └── widget-integration.md
+```json
+{
+  "name": "Corte",
+  "description": "Corte clásico",
+  "duration": 30
+}
 ```
 
-Cuando una especificación defina un contrato más específico, dicha definición será la referencia operativa para esa funcionalidad.
+`description` es opcional.
 
-## 28. Regla principal
+`duration` debe ser un entero mayor que cero.
 
-El contrato API es un acuerdo entre backend y frontend.
+Una creación exitosa devuelve `201 Created` con el servicio creado.
 
-Ningún agente debe modificar unilateralmente el comportamiento esperado de una API compartida.
+Datos inválidos deben devolver `400 Bad Request`.
 
-Los cambios deben ser explícitos, documentados, coordinados y probados.
+El campo `tenantId`, si fuera enviado por el cliente, debe ser ignorado y nunca utilizarse para seleccionar el tenant de autorización.
+
+## 21. Recursos públicos
