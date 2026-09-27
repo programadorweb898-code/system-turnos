@@ -404,3 +404,55 @@ Un estado inválido devuelve `400 Bad Request`.
 
 Un profesional inactivo no debe considerarse disponible para nuevas reservas.
 
+
+## 22. Configuración administrativa de horarios de atención
+
+Los horarios de atención del tenant autenticado se administran mediante:
+
+```http
+GET /api/v1/admin/configuration/business-hours
+POST /api/v1/admin/configuration/business-hours
+```
+
+Ambas rutas requieren autenticación administrativa.
+
+En el MVP los horarios aplican al tenant en su conjunto. No se definen todavía horarios individuales por profesional.
+
+El backend obtiene el `tenant_id` exclusivamente desde el contexto autenticado. El cliente no puede seleccionar otro tenant mediante el body, query string o parámetros de la ruta.
+
+### GET /api/v1/admin/configuration/business-hours
+
+Devuelve los horarios pertenecientes al tenant autenticado.
+
+Cada horario incluye:
+
+- `id`
+- `dayOfWeek`
+- `startTime`
+- `endTime`
+
+La respuesta es `200 OK` y los resultados se ordenan por día y hora de inicio.
+
+### POST /api/v1/admin/configuration/business-hours
+
+Crea un intervalo de atención para el tenant autenticado.
+
+Request:
+
+```json
+{
+  "dayOfWeek": 1,
+  "startTime": "09:00",
+  "endTime": "17:00"
+}
+```
+
+`dayOfWeek` debe estar entre 0 y 6.
+
+`startTime` y `endTime` deben utilizar formato `HH:mm`, y la hora de finalización debe ser posterior a la de inicio.
+
+Una creación exitosa devuelve `201 Created`.
+
+Datos inválidos deben devolver `400 Bad Request`.
+
+Si el cliente envía `tenantId`, ese valor debe ignorarse y nunca utilizarse para seleccionar el tenant de autorización.
