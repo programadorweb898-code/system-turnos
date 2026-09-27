@@ -326,3 +326,81 @@ Datos inválidos deben devolver `400 Bad Request`.
 El campo `tenantId`, si fuera enviado por el cliente, debe ser ignorado y nunca utilizarse para seleccionar el tenant de autorización.
 
 ## 21. Recursos públicos
+
+## 21. Configuración administrativa de profesionales
+
+Los profesionales del tenant autenticado se administran mediante:
+
+```http
+GET /api/v1/admin/configuration/professionals
+POST /api/v1/admin/configuration/professionals
+PATCH /api/v1/admin/configuration/professionals/:id/status
+```
+
+Todas las rutas requieren autenticación administrativa.
+
+El backend obtiene el `tenant_id` exclusivamente desde el contexto autenticado. El cliente no puede seleccionar otro tenant mediante body, query string o parámetros de ruta.
+
+### GET /api/v1/admin/configuration/professionals
+
+Devuelve los profesionales pertenecientes al tenant autenticado.
+
+Cada profesional incluye:
+
+- `id`
+- `name`
+- `status`
+
+Respuesta exitosa:
+
+`200 OK`
+
+### POST /api/v1/admin/configuration/professionals
+
+Crea un profesional para el tenant autenticado.
+
+Request:
+
+```json
+{
+  "name": "Juan"
+}
+```
+
+`name` es obligatorio y debe contener al menos un carácter después de eliminar espacios externos.
+
+El profesional se crea inicialmente con estado `active`.
+
+Una creación exitosa devuelve:
+
+`201 Created`
+
+Datos inválidos deben devolver `400 Bad Request`.
+
+Si el cliente envía `tenantId`, ese valor debe ignorarse y nunca utilizarse para seleccionar el tenant de autorización.
+
+### PATCH /api/v1/admin/configuration/professionals/:id/status
+
+Modifica el estado de un profesional perteneciente al tenant autenticado.
+
+Request:
+
+```json
+{
+  "status": "inactive"
+}
+```
+
+Valores permitidos:
+
+- `active`
+- `inactive`
+
+Una modificación exitosa devuelve `200 OK`.
+
+Si el profesional no existe dentro del tenant autenticado, devuelve `404 Not Found`.
+
+Un estado inválido devuelve `400 Bad Request`.
+
+Un profesional inactivo no debe considerarse disponible para nuevas reservas.
+
