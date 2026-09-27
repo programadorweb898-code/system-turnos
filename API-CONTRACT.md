@@ -252,7 +252,29 @@ Debe volver a validarse:
 
 Las rutas definitivas se establecerán en la especificación correspondiente.
 
-## 19. Recursos públicos
+## 19. Recursos administrativos
+
+El administrador autenticado puede consultar la configuración del tenant asociado a su identidad mediante:
+
+```http
+GET /api/v1/admin/tenant
+```
+
+La ruta no recibe `tenant_id`. El backend obtiene el tenant desde el contexto autenticado y no debe permitir que el cliente sustituya ese contexto mediante parámetros o campos de la solicitud.
+
+La respuesta incluye únicamente la configuración necesaria para la administración del tenant:
+
+- `id`
+- `name`
+- `slug`
+- `timezone`
+- `status`
+- `maxDailyAppointments`
+- `minimumBookingNoticeHours`
+
+Una solicitud sin autenticación debe recibir `401 Unauthorized`.
+
+## 20. Recursos públicos
 
 La página pública y el widget necesitarán acceder a información pública del tenant.
 
