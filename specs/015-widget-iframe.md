@@ -104,15 +104,18 @@ La interfaz pública y el widget utilizan el mismo flujo de reserva.
 
 ## 7. CORS
 
-Las solicitudes realizadas desde el navegador del sitio anfitrión deben estar restringidas a orígenes autorizados para la integración.
+Debe distinguirse entre el origen del sitio anfitrión y el origen del widget.
+
+En la implementación mediante iframe, el código JavaScript que realiza las llamadas a la API se ejecuta dentro del documento del widget. Por lo tanto, el `Origin` de esas llamadas corresponde al origen donde está alojado el widget, no al dominio que contiene el iframe.
 
 El backend debe:
 
 1. identificar la integración mediante `publicKey`;
 2. comprobar que la integración está verificada;
 3. comprobar que está conectada;
-4. comprobar que el origen de la solicitud está autorizado;
-5. devolver `Access-Control-Allow-Origin` únicamente para ese origen.
+4. permitir el origen configurado para la aplicación del widget;
+5. mantener, cuando corresponda, los orígenes del dominio del negocio para futuras integraciones JavaScript directas;
+6. devolver `Access-Control-Allow-Origin` únicamente para el origen solicitado cuando esté autorizado.
 
 La ausencia de un header `Origin` puede corresponder a clientes que no utilizan CORS de navegador y no constituye por sí misma autenticación.
 
