@@ -284,3 +284,39 @@ La cantidad máxima de turnos diarios y la anticipación mínima para solicitar 
 La anticipación mínima se expresará en horas.
 
 Estas reglas no serán decididas por el cliente ni por el Booking Engine; el Booking Engine únicamente las aplicará y validará.
+
+## 30. Corrección de la anticipación mínima al migrar de minutos a horas
+
+La decisión 29 expresa la anticipación mínima en horas. La migración que cambió la columna de `minimum_booking_notice_minutes` a `minimum_booking_notice_hours` no convirtió los valores existentes, por lo que los tenants quedaron con una anticipación incorrecta y desproporcionadamente restrictiva.
+
+El valor original no siempre es reconstruible de forma exacta: 90 minutos no equivalen a un número entero de horas. Se decided redondear hacia arriba (`ceil(minutes / 60)`).
+
+Se eligió exceder la anticipación antes que truncar, porque un valor mayor solo hace que el cliente reserve con más antelación de la que pretendía, mientras que un valor menor rompería la regla de negocio que el tenant configuró.
+
+La migración correctiva no es exactamente reversible. Deshacerla devuelve un valor aproximado en minutos. Para recuperar el dato original es necesario un backup previo a la migración original.
+
+## 31. Conflicto entre un bloqueo de agenda y un turno confirmado
+
+Cuando un administrador crea un bloqueo de agenda que se superpone con turnos ya confirmados, la creación del bloqueo se rechaza con `409 Conflict` y el detalle de los turnos en conflicto.
+
+El turno confirmado no se modifica, cancela ni reprograma automáticamente. Se considera que el turno confirmado es un compromiso del sistema con el cliente, y que romperlo desde una acción administrativa de bloqueos generaría cancelaciones no solicitadas y pérdida de reservas.
+
+La resolución del conflicto corresponde al administrador, que debe decidir si reprograma o cancela el turno por los canales habituales.
+
+Se decidió verificar el conflicto también en los bloqueos dirigidos a un profesional, y no solo en los globales. Motivo: si el administrador no fuera avisado, el bloqueo ocultaría un turno existente en el panel y en la disponibilidad, y el conflicto aparecería después y en un lugar menos útil.
+
+## 32. Confianza en proxies inversos para el rate limiting
+
+El rate limiting por dirección IP requiere conocer la IP real del cliente. Detrás de un proxy inverso, sin configuración explícita, todas las solicitudes aparecen como provenientes de la IP del proxy, y el contador agruparía a todos los usuarios del sistema en un mismo límite.
+
+Se configurará un número fijo de saltos de proxy de confianza mediante la variable `TRUST_PROXY_HOPS`, validada como un entero entre 0 y 5.
+
+No se utilizará `trust proxy = true`. Con esa opción, un cliente podría falsear su dirección IP mediante el header `X-Forwarded-For` y evadir el limitador. Un número fijo de saltos limita el alcance de la confianza.
+
+## 33. Límite de solicitudes en autenticación
+
+El límite se aplica únicamente a `POST /api/v1/auth/login`, con 10 solicitudes por ventana de 15 minutos.
+
+Se eligió una ventana amplia en lugar de un límite por minuto para no castigar a usuarios legítimos que comparten una misma dirección IP, algo habitual en redes de oficinas con salida NAT compartida, mientras se mantiene una restricción efectiva contra la fuerza bruta automatizada.
+
+El límite no se extiende a otros endpoints en esta etapa. Ampliarlo sin medir el tráfico real arriesgaría penalizar el uso normal del panel administrativo.

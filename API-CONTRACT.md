@@ -157,6 +157,29 @@ Los códigos de error deben ser estables para permitir que el frontend pueda rea
 
 El texto de `message` está destinado a proporcionar información legible y no debe utilizarse como identificador lógico.
 
+### 12.2 Límite de solicitudes
+
+Cuando un endpoint aplica rate limiting y el límite se supera, la respuesta debe ser `429 Too Many Requests` respetando la estructura de error de la sección 12, con el código `RATE_LIMIT_EXCEEDED`.
+
+```json
+{
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "Demasiadas solicitudes. Intente nuevamente más tarde."
+  }
+}
+```
+
+El frontend debe reaccionar a este código mostrando un mensaje de espera y no reintentando de forma inmediata.
+
+Los límites activos son los siguientes:
+
+| Endpoint | Límite | Ventana |
+| --- | --- | --- |
+| `POST /api/v1/auth/login` | 10 solicitudes | 15 minutos |
+
+El contador es por dirección IP de origen. Cuando la aplicación se despliega detrás de un proxy inverso, debe declarar cuántos saltos de proxy son de confianza para que la IP de origen sea la real y no la del proxy. El valor se configura con `TRUST_PROXY_HOPS` y se valida como un entero entre 0 y 5.
+
 ### 12.1 Campo `details`
 
 El campo `details` es opcional y solo debe utilizarse cuando el backend puede determinar qué condiciones concretas incumplidas impiden completar la operación.
@@ -475,6 +498,75 @@ Una creación exitosa devuelve `201 Created`.
 Datos inválidos deben devolver `400 Bad Request`.
 
 Si el cliente envía `tenantId`, ese valor debe ignorarse y nunca utilizarse para seleccionar el tenant de autorización.
+
+## 22. Bloqueos de agenda
+
+### 22.1 GET /api/v1/admin/configuration/blocked-times
+
+Devuelve los bloqueos del tenant autenticado.
+
+Requiere autenticación.
+
+Cada elemento contiene:
+
+- `id`
+- `professionalId` (puede ser `null`, si el bloqueo aplica a todo el tenant)
+- `startsAt`
+- `endsAt`
+- `reason` (puede ser `null`)
+
+Los bloqueos se devuelven ordenados por `startsAt` ascendente.
+
+Errores:
+
+- `401 Unauthorized`: falta autenticación.
+
+### 22.2 POST /api/v1/admin/configuration/blocked-times
+
+Crea un bloqueo de agenda para el tenant autenticado.
+
+Requiere autenticación.
+
+Request:
+
+```json
+{
+  "startsAt": "2026-03-10T14:00:00.000Z",
+  "endsAt": "2026-03-10T16:00:00.000Z",
+  "reason": "Capacitación",
+  "professionalId": null
+}
+```
+
+`startsAt` y `endsAt` son obligatorios. `professionalId` es opcional y, si se omite o se envía `null`, el bloqueo aplica a todo el tenant. `reason` es opcional.
+
+El `tenantId` se toma del contexto autenticado; si el cliente lo envía en el body, se ignora.
+
+Respuestas:
+
+- `201 Created`: bloqueo creado.
+- `400 Bad Request`: intervalo inválido, `endsAt` anterior a `startsAt`, fechas mal formadas o `reason` demasiado largo.
+- `401 Unauthorized`: falta autenticación.
+- `404 Not Found`: el `professionalId` informado no pertenece al tenant autenticado.
+- `409 Conflict`: existen turnos `PENDING` o `CONFIRMED` que se superponen con el intervalo solicitado.
+
+Respuesta `409`:
+
+```json
+{
+  "error": {
+    "code": "BLOCKED_TIME_CONFLICTS",
+    "message": "No se puede crear el bloqueo porque hay turnos confirmados en ese intervalo.",
+    "details": [
+      "Turno del 2026-03-10T14:30:00.000Z al 2026-03-10T15:00:00.000Z (Ana Gómez)."
+    ]
+  }
+}
+```
+
+El campo `details` contiene una entrada por cada turno en conflicto. Los intervalos se comparan como semiabiertos `[inicio, fin)`, por lo que un turno que termina exactamente al inicio del bloqueo no genera conflicto.
+
+Cuando se devuelve `409`, el bloqueo **no** se crea y ningún turno existente se modifica, cancela ni reprograma. La resolución del conflicto corresponde al administrador.
 
 ## 22-bis. Publicación del negocio
 
