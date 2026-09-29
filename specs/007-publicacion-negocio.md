@@ -45,10 +45,25 @@ Antes de permitir la publicación, el backend debe verificar como mínimo:
 - timezone válida
 - al menos un servicio activo con duración positiva
 - al menos un profesional activo
+- al menos un profesional activo asignado a al menos un servicio activo
 - configuración válida de horarios de atención
 - consistencia general de la configuración necesaria para reservar
 
 La validación debe realizarse en backend.
+
+### 5.1 Asignación profesional-servicio como requisito de publicación
+
+Publicar un negocio cuyos profesionales no pueden atender ningún servicio produce un negocio público sin disponibilidad posible.
+
+Por lo tanto, la publicación exige que exista al menos una relación activa que permita reservar:
+
+- un servicio con `status = active` y `duration > 0`;
+- un profesional con `status = active`;
+- una asignación vigente entre ese profesional y ese servicio.
+
+Esta regla se deriva de la Especificación 013 (asignación de servicios a profesionales) y aplica el principio de que el negocio publicado debe poder recibir reservas válidas.
+
+No es necesario que todos los profesionales estén asignados ni que todos los servicios tengan profesionales. Basta con que exista al menos una combinación elegible.
 
 ## 6. Publicación
 
@@ -96,6 +111,23 @@ Ejemplo conceptual:
 ~~~
 
 El formato definitivo debe respetar `API-CONTRACT.md`.
+
+El envelope de error admite un campo `details` opcional de tipo arreglo de cadenas para enumerar los requisitos faltantes:
+
+~~~json
+{
+  "error": {
+    "code": "TENANT_NOT_READY",
+    "message": "El negocio todavía no está listo para publicarse.",
+    "details": [
+      "Debe existir al menos un servicio activo.",
+      "Debe existir al menos un profesional activo asignado a un servicio activo."
+    ]
+  }
+}
+~~~
+
+`details` es opcional y solo se utiliza cuando el backend puede determinar qué requisitos concretos faltan.
 
 ## 8. Página pública
 
@@ -177,19 +209,56 @@ El cliente público nunca puede cambiar el estado de publicación.
 
 El backend no debe confiar en un `tenant_id` enviado arbitrariamente por el cliente.
 
-## 13. API conceptual
+## 13. API
 
-Los endpoints definitivos se incorporarán al contrato de API cuando corresponda.
-
-Conceptualmente:
+Las rutas definitivas son:
 
 ~~~text
-POST /api/v1/tenant/publication
+POST /api/v1/admin/tenant/publication
+POST /api/v1/admin/tenant/unpublication
 ~~~
 
-para publicar, y una operación equivalente para despublicar.
+Ambas requieren autenticación y autorización administrativa.
 
-El nombre definitivo queda pendiente de implementación y contrato API.
+El backend obtiene el tenant desde el contexto autenticado. Un `tenantId` enviado por el cliente nunca puede utilizarse para seleccionar el tenant de la operación.
+
+Se adopta el namespace `/api/v1/admin/**` vigente en `API-CONTRACT.md` y en el resto del backend.
+
+### 13.1 Publicación
+
+`POST /api/v1/admin/tenant/publication`
+
+El backend valida los requisitos mínimos y, si se cumplen, cambia el estado del tenant a `published`.
+
+Respuesta `200`:
+
+~~~json
+{
+  "status": "published"
+}
+~~~
+
+### 13.2 Publicación repetida
+
+Publicar un tenant que ya se encuentra en `published` es idempotente.
+
+El backend vuelve a validar los requisitos mínimos y responde `200` con el estado actual. No devuelve error.
+
+La revalidación permite detectar una configuración que se volvió inválida después de la publicación.
+
+### 13.3 Despublicación
+
+`POST /api/v1/admin/tenant/unpublication`
+
+Cambia el estado del tenant a `unpublished` y responde `200` con el estado resultante.
+
+Despublicar un tenant que ya se encuentra en `unpublished` es idempotente y responde `200`.
+
+Despublicar no elimina turnos existentes ni historial.
+
+### 13.4 Tenant no listo
+
+Cuando la configuración no cumple los requisitos mínimos, el backend responde `409 Conflict` con código `TENANT_NOT_READY` y el campo `details` opcional.
 
 ## 14. Criterios de aceptación
 
@@ -233,12 +302,23 @@ La publicación o despublicación no permite acceder ni modificar información d
 
 El frontend no puede publicar un tenant sin pasar por la validación del backend.
 
+### CA-11
+
+Un tenant sin al menos un profesional activo asignado a un servicio activo no puede publicarse.
+
+### CA-12
+
+Publicar o despublicar un tenant que ya se encuentra en el estado solicitado responde `200` con el estado actual y vuelve a validar la configuración en el caso de la publicación.
+
 ## 15. Casos límite
 
 Deben contemplarse como mínimo:
 
 - intento de publicar sin servicios
 - intento de publicar sin profesionales
+- intento de publicar sin asignación profesional-servicio
+- intento de publicar con asignación de profesional inactivo
+- intento de publicar con asignación de servicio inactivo
 - intento de publicar sin horarios
 - servicio inactivo
 - profesional inactivo

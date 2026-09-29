@@ -157,6 +157,25 @@ Los códigos de error deben ser estables para permitir que el frontend pueda rea
 
 El texto de `message` está destinado a proporcionar información legible y no debe utilizarse como identificador lógico.
 
+### 12.1 Campo `details`
+
+El campo `details` es opcional y solo debe utilizarse cuando el backend puede determinar qué condiciones concretas incumplidas impiden completar la operación.
+
+```json
+{
+  "error": {
+    "code": "TENANT_NOT_READY",
+    "message": "El negocio todavía no está listo para publicarse.",
+    "details": [
+      "Debe existir al menos un servicio activo.",
+      "Debe existir al menos un profesional activo asignado a un servicio activo."
+    ]
+  }
+}
+```
+
+Cuando `details` está presente es un arreglo de cadenas legibles. Nunca debe utilizarse para filtrar información de otros tenants.
+
 ## 13. Validación
 
 La validación debe realizarse en el backend aunque el frontend también valide los datos.
@@ -456,6 +475,59 @@ Una creación exitosa devuelve `201 Created`.
 Datos inválidos deben devolver `400 Bad Request`.
 
 Si el cliente envía `tenantId`, ese valor debe ignorarse y nunca utilizarse para seleccionar el tenant de autorización.
+
+## 22-bis. Publicación del negocio
+
+Publicar y despublicar son operaciones administrativas sobre el tenant autenticado.
+
+```http
+POST /api/v1/admin/tenant/publication
+POST /api/v1/admin/tenant/unpublication
+```
+
+Ninguna de las dos rutas recibe `tenant_id`. El backend obtiene el tenant desde el contexto autenticado.
+
+### POST /api/v1/admin/tenant/publication
+
+Valida la configuración mínima del negocio y, si se cumple, cambia el estado a `published`.
+
+Requisitos mínimos verificados en backend:
+
+- nombre comercial;
+- slug público válido;
+- timezone válida;
+- al menos un servicio activo con duración positiva;
+- al menos un profesional activo;
+- al menos un profesional activo asignado a al menos un servicio activo;
+- al menos un intervalo válido de horario de atención.
+
+Respuesta `200 OK`:
+
+```json
+{
+  "status": "published"
+}
+```
+
+Publicar un negocio que ya está `published` es idempotente: vuelve a validar la configuración y devuelve `200 OK` con el estado actual.
+
+Si la configuración no cumple los requisitos, devuelve `409 Conflict` con código `TENANT_NOT_READY` y el campo `details` opcional indicando las condiciones incumplidas.
+
+### POST /api/v1/admin/tenant/unpublication
+
+Cambia el estado a `unpublished` y devuelve `200 OK`:
+
+```json
+{
+  "status": "unpublished"
+}
+```
+
+Despublicar un negocio que ya está `unpublished` es idempotente y devuelve `200 OK`.
+
+Despublicar impide nuevas reservas públicas y no elimina turnos existentes ni historial.
+
+Una solicitud sin autenticación debe recibir `401 Unauthorized`.
 
 ## 23. Asignación de servicios a profesionales
 
