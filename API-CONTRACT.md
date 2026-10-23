@@ -516,3 +516,34 @@ Si se omite, el backend selecciona de forma transaccional un profesional elegibl
 Si se informa, el backend debe comprobar que el profesional pertenece al tenant, está activo, está habilitado para el servicio y puede atender el intervalo solicitado.
 
 Si no existe ningún profesional elegible al momento de confirmar una reserva con Cualquier profesional, la operación debe responder 409 Conflict.
+
+## 24. Acceso privado del cliente a un turno (propuesto; no implementado)
+
+Especificación: `specs/017-acceso-privado-turnos-cliente.md`. Estas rutas no existen todavía en el backend. El frontend no debe llamarlas hasta que su implementación esté integrada y verificada.
+
+Al confirmar `POST /api/v1/public/sites/:publicKey/appointments`, la respuesta `201 Created` existente se ampliará con `managementToken`, una credencial opaca generada para ese único turno. Se entrega una sola vez: ningún endpoint permite recuperarla con UUID, nombre o teléfono. El campo `id` de la reserva no autoriza operaciones.
+
+Todas las rutas siguientes requieren `Authorization: Bearer <managementToken>`. El token debe corresponder al `:appointmentId` de la ruta; nunca se envía en URL ni en body. No utilizan el JWT administrativo.
+
+### GET /api/v1/public/appointments/:appointmentId
+
+Devuelve `200 OK` con `id`, `tenantName`, `serviceName`, `professionalName`, `startAt`, `endAt` y `status`. No incluye nombre, teléfono o notas del cliente.
+
+### POST /api/v1/public/appointments/:appointmentId/cancel
+
+Body opcional: `{ "reason": "Cambio de planes" }` (máximo 300 caracteres). Devuelve `200 OK` con la representación mínima del turno y estado `CANCELLED`. Repetirla con el mismo token válido no crea otro cambio.
+
+### POST /api/v1/public/appointments/:appointmentId/reschedule
+
+Body: `{ "startAt": "2026-11-20T14:00:00.000Z", "professionalId": "uuid-opcional" }`. `startAt` requiere fecha-hora ISO 8601 con zona explícita. Si se omite `professionalId`, permanece el actual. El servicio no se modifica. Devuelve `200 OK` con la representación mínima y nuevo intervalo. Un conflicto devuelve `409` y deja intacto el turno original.
+
+### Errores
+
+- `400 INVALID_REQUEST`: datos o formato inválidos.
+- `401 AUTHENTICATION_REQUIRED`: falta el bearer token.
+- `404 APPOINTMENT_NOT_FOUND`: turno inexistente o credencial inválida, vencida, revocada o de otro turno/tenant. No se distingue entre esos casos.
+- `409 APPOINTMENT_NOT_MODIFIABLE`: turno accesible, pero no admite el cambio por estado o fecha.
+- `409 APPOINTMENT_CONFLICT`: horario o reglas de disponibilidad impiden la reprogramación.
+- `429 RATE_LIMIT_EXCEEDED`: demasiadas solicitudes.
+
+Las respuestas de estas rutas y la respuesta de creación que contiene `managementToken` deben incluir `Cache-Control: no-store`. El frontend conservará el enlace privado sin exponer el token en query string, logs, analytics ni almacenamiento local persistente.
