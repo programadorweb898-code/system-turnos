@@ -28,7 +28,7 @@ El acceso por token es una credencial de capacidad: cualquiera que obtenga el en
 
 ## 5. Operaciones públicas
 
-Las rutas se definen en `API-CONTRACT.md`. Todas exigen token válido y correspondencia exacta entre token, tenant y turno. La consulta pública devuelve solo los datos necesarios para reconocer el turno: referencia, negocio, servicio, profesional, inicio, fin y estado. No devuelve teléfono, notas, otros turnos ni configuración administrativa.
+Las rutas se definen en `API-CONTRACT.md`. Todas exigen token válido y correspondencia exacta entre token, clave pública del sitio, tenant y turno. El sitio aporta el contexto de CORS, pero su clave pública no reemplaza el token. La consulta pública devuelve solo los datos necesarios para reconocer el turno: referencia, negocio, servicio, profesional, inicio, fin y estado. No devuelve teléfono, notas, otros turnos ni configuración administrativa.
 
 La cancelación es idempotente mientras el token sea válido: un segundo intento devuelve el estado cancelado sin nuevo cambio ni evento. La reprogramación conserva ID y servicio; usa el mismo motor de validación que la reserva y la ruta administrativa: estado activo/futuro, anticipación mínima, horario, servicio/profesional habilitados, bloqueos, límite diario y exclusión de intervalos. Repetir la misma reprogramación debe ser un no-op. Los cambios y el historial se confirman en una transacción con los mismos bloqueos de concurrencia que reservas y bloqueos de agenda.
 
