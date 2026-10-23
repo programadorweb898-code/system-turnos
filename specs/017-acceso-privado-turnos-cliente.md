@@ -8,7 +8,7 @@ Permitir que un cliente sin cuenta consulte, cancele o reprograme únicamente su
 
 El identificador UUID del turno, el nombre y el teléfono son datos de referencia, no credenciales. El acceso se concede por posesión de un token opaco y aleatorio, exclusivo de un turno. No se reutiliza el JWT administrativo.
 
-El backend genera al confirmar la reserva 32 bytes con un generador criptográficamente seguro; codifica el token en base64url. Persiste solamente SHA-256(token), asociado a `tenant_id` y `appointment_id`, con índice único. La creación del turno y del hash debe ser atómica. El token en claro se entrega una sola vez en la respuesta exitosa de la reserva y, cuando exista el flujo de notificación, mediante un enlace privado al teléfono de confirmación. Nunca se incluye en eventos, logs, métricas, trazas o respuestas administrativas.
+El backend genera al confirmar la reserva 32 bytes con un generador criptográficamente seguro; codifica el token en base64url. Persiste solamente SHA-256(token), asociado a `tenant_id` y `appointment_id`, con índice único. La creación del turno y del hash debe ser atómica. El token en claro se entrega una sola vez en la respuesta exitosa de la reserva y, cuando exista el flujo de notificación, mediante un enlace privado al teléfono de confirmación. Nunca se incluye en eventos de dominio, logs, métricas, trazas o respuestas administrativas. Para poder reintentar la entrega por WhatsApp, el material del enlace podrá persistirse temporalmente cifrado en una cola transaccional de notificaciones; jamás en claro y con borrado al entregarse o vencer. La clave de cifrado vive fuera del repositorio y del payload de eventos.
 
 Una reserva creada antes de introducir este mecanismo no obtiene acceso público automáticamente. No habrá un endpoint anónimo que permita emitir o recuperar tokens usando teléfono, nombre o UUID. Su gestión continuará a través del administrador hasta definir una recuperación segura.
 
@@ -20,7 +20,7 @@ El vencimiento del token no concede permiso para cambiar turnos pasados: cancela
 
 ## 4. Entrega y uso
 
-El cliente recibe `managementToken` únicamente en el `201` de creación y debe poder conservar un enlace privado para volver después. Cuando WhatsApp esté implementado, el enlace puede enviarse al teléfono suministrado al reservar. Un fallo de entrega no revierte una reserva; tampoco debe inducir a emitir un segundo token por reintento.
+El cliente recibe `managementToken` únicamente en el `201` de creación y debe poder conservar un enlace privado para volver después. El flujo completo debe enviar el enlace al teléfono suministrado al reservar por WhatsApp y notificar también cada reprogramación y cancelación confirmada. Un fallo de entrega no revierte una reserva; tampoco debe inducir a emitir un segundo token por reintento.
 
 El enlace del frontend llevará el token en el fragmento (`#token=...`), no en la ruta ni en el query string. El fragmento no viaja en la petición HTTP. El frontend lo lee, lo elimina de la barra de dirección y llama a la API con `Authorization: Bearer <managementToken>`. Debe usar HTTPS, `Referrer-Policy: no-referrer`, evitar analytics sobre esa pantalla, no guardarlo en `localStorage` y no incluirlo en mensajes de error. Si se pierde, no se puede recuperar con los datos de contacto.
 
@@ -54,7 +54,7 @@ Las respuestas privadas, y la respuesta de creación que contiene `managementTok
 3. Crear el token atómicamente con la reserva y entregarlo una vez en `201`.
 4. Implementar autorización por token, lectura mínima y cancelación/reprogramación usando reglas existentes.
 5. Probar aislamiento, token inválido/vencido/revocado, filtrado de datos, idempotencia, disponibilidad y carreras.
-6. Integrar en el futuro frontend la pantalla privada y la entrega persistente del enlace. WhatsApp puede añadirse después sin hacer depender la reserva del proveedor.
+6. Integrar frontend, cola de notificaciones y envío por WhatsApp para reserva, reprogramación y cancelación. La reserva y los cambios no deben depender de la disponibilidad del proveedor; si falla, el aviso queda pendiente y se reintenta.
 
 No se considerará completo el acceso posterior del cliente hasta que exista al menos un método de entrega y conservación del enlace. No se desplegarán rutas públicas de modificación sin validar la seguridad de extremo a extremo.
 
@@ -70,4 +70,6 @@ No se considerará completo el acceso posterior del cliente hasta que exista al 
 - Carreras entre cliente, administrador, nueva reserva y bloqueo no producen estados inconsistentes.
 - Token vencido o revocado no permite lectura ni cambios.
 - Se registra el actor `CLIENT` sin simular un usuario administrativo.
+- Los tres cambios de estado generan un aviso WhatsApp pendiente de manera atómica y sin duplicados por reintento.
+- Un fallo del proveedor no revierte el turno y deja el aviso reintentable.
 - Existen pruebas de integración y contrato para todas las condiciones anteriores.
