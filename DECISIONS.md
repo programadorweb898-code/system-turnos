@@ -284,3 +284,12 @@ La cantidad máxima de turnos diarios y la anticipación mínima para solicitar 
 La anticipación mínima se expresará en horas.
 
 Estas reglas no serán decididas por el cliente ni por el Booking Engine; el Booking Engine únicamente las aplicará y validará.
+
+
+## 34. Acceso privado del cliente a un turno mediante token opaco
+
+Para gestionar un turno sin cuenta se utilizará una credencial de capacidad exclusiva de ese turno: 32 bytes aleatorios, codificados en base64url. El backend almacenará solo su hash SHA-256 junto con tenant, turno y vencimiento. El UUID del turno y los datos de contacto no son factores de autorización. La decisión se detalla en `specs/017-acceso-privado-turnos-cliente.md` y el contrato propuesto en `API-CONTRACT.md`.
+
+Se evita un JWT reutilizable para clientes: el token opaco permite revocación individual y no obliga a incorporar cuentas de cliente ni claves de firma nuevas al flujo público. Se entrega una sola vez al confirmar la reserva y podrá transportarse en un enlace privado por WhatsApp cuando exista ese canal, sin hacer depender la creación del turno del proveedor.
+
+Las rutas públicas de gestión no se activarán hasta contar con validación de extremo a extremo, auditoría del actor cliente y una forma de entrega/conservación del enlace. Los turnos existentes sin token seguirán administrándose por el negocio; no habrá recuperación anónima mediante teléfono o nombre.
