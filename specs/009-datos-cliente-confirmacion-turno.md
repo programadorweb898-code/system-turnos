@@ -135,7 +135,7 @@ No debe exponerse un identificador interno si puede utilizarse un identificador 
 
 ## 7. Confirmación mediante WhatsApp
 
-La confirmación del turno será enviada al número de teléfono proporcionado por el cliente mediante WhatsApp.
+La confirmación del turno será enviada al número de teléfono proporcionado por el cliente mediante WhatsApp. Las reprogramaciones y cancelaciones confirmadas también generan avisos por WhatsApp, según `specs/010-notificaciones-automatizaciones.md`.
 
 El envío se realizará después de que el turno haya sido creado correctamente.
 
