@@ -13,8 +13,8 @@ El sistema confirma un turno cuando la operación de creación se persiste corre
 Después de esa confirmación pueden ejecutarse automatizaciones como:
 
 - enviar una confirmación por WhatsApp;
-- notificar una cancelación;
-- notificar una reprogramación;
+- notificar una cancelación por WhatsApp;
+- notificar una reprogramación por WhatsApp;
 - enviar recordatorios futuros.
 
 n8n actúa como sistema externo de automatización. No debe decidir si un turno está disponible ni si un turno queda confirmado.
@@ -44,7 +44,7 @@ Se emite después de que la creación del turno haya sido confirmada correctamen
 
 Uso inicial:
 
-- enviar confirmación del turno por WhatsApp.
+- enviar confirmación del turno por WhatsApp con enlace privado de gestión cuando el turno tenga token.
 
 ### 4.2 appointment.cancelled
 
@@ -52,7 +52,7 @@ Se emite después de que una cancelación haya sido confirmada correctamente.
 
 Uso inicial:
 
-- notificar la cancelación al cliente cuando corresponda.
+- notificar la cancelación al cliente por WhatsApp.
 
 ### 4.3 appointment.rescheduled
 
@@ -60,7 +60,7 @@ Se emite después de que una reprogramación haya sido confirmada correctamente.
 
 Uso inicial:
 
-- notificar al cliente la nueva fecha y horario cuando corresponda.
+- notificar al cliente por WhatsApp la nueva fecha y horario.
 
 ## 5. Reglas de negocio
 
@@ -77,7 +77,7 @@ Uso inicial:
 
 ## 6. Datos del evento
 
-El contrato definitivo del evento deberá definirse junto con la implementación de backend.
+El contrato definitivo del evento deberá definirse junto con la implementación de backend. Un token de gestión nunca debe aparecer en un evento de dominio ni en logs; el material necesario para el enlace privado, si se encola, debe quedar cifrado temporalmente y purgarse tras entrega o vencimiento.
 
 Como mínimo, un evento debe permitir identificar:
 
@@ -162,7 +162,7 @@ La integración debe utilizar una interfaz explícita de eventos o API.
 
 WhatsApp será utilizado inicialmente para enviar la confirmación del turno al número proporcionado por el cliente.
 
-El proveedor concreto de WhatsApp no forma parte de esta especificación.
+El proveedor concreto de WhatsApp no forma parte de esta especificación. El envío efectivo de los tres tipos de aviso es obligatorio para considerar completo el flujo; antes de configurar el proveedor, los eventos y avisos pendientes no equivalen a mensajes entregados.
 
 La automatización deberá recibir los datos necesarios para construir el mensaje, pero la confirmación del turno seguirá siendo responsabilidad del backend.
 

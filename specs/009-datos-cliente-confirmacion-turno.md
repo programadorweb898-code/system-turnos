@@ -135,7 +135,7 @@ No debe exponerse un identificador interno si puede utilizarse un identificador 
 
 ## 7. Confirmación mediante WhatsApp
 
-La confirmación del turno será enviada al número de teléfono proporcionado por el cliente mediante WhatsApp.
+La confirmación del turno será enviada al número de teléfono proporcionado por el cliente mediante WhatsApp. Las reprogramaciones y cancelaciones confirmadas también generan avisos por WhatsApp, según `specs/010-notificaciones-automatizaciones.md`.
 
 El envío se realizará después de que el turno haya sido creado correctamente.
 
@@ -259,7 +259,7 @@ Por lo tanto, esta especificación no define todavía cómo podrá:
 - consultar nuevamente
 - modificar sus datos
 
-Antes de exponer esas operaciones públicamente deberá definirse un mecanismo seguro de acceso al turno, como un enlace privado o token.
+El mecanismo propuesto para esa gestión posterior se define en `specs/017-acceso-privado-turnos-cliente.md`. Sus rutas aún no están implementadas; el ID del turno, nombre y teléfono nunca autorizan operaciones por sí solos.
 
 ## 14. Datos sensibles y notas
 
