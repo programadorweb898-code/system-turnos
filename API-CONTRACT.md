@@ -523,17 +523,17 @@ Especificación: `specs/017-acceso-privado-turnos-cliente.md`. Estas rutas no ex
 
 Al confirmar `POST /api/v1/public/sites/:publicKey/appointments`, la respuesta `201 Created` existente se ampliará con `managementToken`, una credencial opaca generada para ese único turno. Se entrega una sola vez: ningún endpoint permite recuperarla con UUID, nombre o teléfono. El campo `id` de la reserva no autoriza operaciones.
 
-Todas las rutas siguientes requieren `Authorization: Bearer <managementToken>`. El token debe corresponder al `:appointmentId` de la ruta; nunca se envía en URL ni en body. No utilizan el JWT administrativo.
+Todas las rutas siguientes requieren `Authorization: Bearer <managementToken>`. El token debe corresponder al `:appointmentId` y al tenant identificado por `:publicKey`; la clave pública del sitio no es una credencial. El token nunca se envía en URL ni en body. Se aplica el CORS del sitio, con `Authorization` permitido en el preflight. No utilizan el JWT administrativo.
 
-### GET /api/v1/public/appointments/:appointmentId
+### GET /api/v1/public/sites/:publicKey/appointments/:appointmentId
 
 Devuelve `200 OK` con `id`, `tenantName`, `serviceName`, `professionalName`, `startAt`, `endAt` y `status`. No incluye nombre, teléfono o notas del cliente.
 
-### POST /api/v1/public/appointments/:appointmentId/cancel
+### POST /api/v1/public/sites/:publicKey/appointments/:appointmentId/cancel
 
 Body opcional: `{ "reason": "Cambio de planes" }` (máximo 300 caracteres). Devuelve `200 OK` con la representación mínima del turno y estado `CANCELLED`. Repetirla con el mismo token válido no crea otro cambio.
 
-### POST /api/v1/public/appointments/:appointmentId/reschedule
+### POST /api/v1/public/sites/:publicKey/appointments/:appointmentId/reschedule
 
 Body: `{ "startAt": "2026-11-20T14:00:00.000Z", "professionalId": "uuid-opcional" }`. `startAt` requiere fecha-hora ISO 8601 con zona explícita. Si se omite `professionalId`, permanece el actual. El servicio no se modifica. Devuelve `200 OK` con la representación mínima y nuevo intervalo. Un conflicto devuelve `409` y deja intacto el turno original.
 
