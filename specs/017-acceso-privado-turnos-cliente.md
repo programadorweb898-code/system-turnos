@@ -39,12 +39,13 @@ El historial debe distinguir `CLIENT` de `ADMIN`. Para un cambio del cliente, `a
 Formato de error: `{ "error": { "code": "...", "message": "..." } }`.
 
 - `400 INVALID_REQUEST`: formato de token, identificador o body inválido.
+- `401 AUTHENTICATION_REQUIRED`: falta el bearer token.
 - `404 APPOINTMENT_NOT_FOUND`: turno inexistente, token inválido, vencido, revocado o correspondiente a otro turno/tenant. La respuesta no debe revelar cuál de esas causas ocurrió.
 - `409 APPOINTMENT_NOT_MODIFIABLE`: turno accesible, pero estado/fecha impiden modificarlo.
 - `409 APPOINTMENT_CONFLICT`: nueva disponibilidad, profesional o regla de reserva no satisfecha.
 - `429 RATE_LIMIT_EXCEEDED`: límite por IP en rutas de acceso público.
 
-El backend valida la credencial antes de consultar o exponer datos del turno. Las comparaciones de hash deben evitar diferencias observables útiles. Se aplica un límite de solicitudes, adecuado para la experiencia pública, tanto a lectura como a cambios. Nunca se permite enumerar turnos por teléfono o nombre. No se registra el header `Authorization` ni el enlace.
+Las respuestas privadas, y la respuesta de creación que contiene `managementToken`, llevan `Cache-Control: no-store`. El backend valida la credencial antes de consultar o exponer datos del turno. Las comparaciones de hash deben evitar diferencias observables útiles. Se aplica un límite de solicitudes, adecuado para la experiencia pública, tanto a lectura como a cambios. Nunca se permite enumerar turnos por teléfono o nombre. No se registra el header `Authorization` ni el enlace.
 
 ## 7. Dependencias y secuencia de implementación
 
